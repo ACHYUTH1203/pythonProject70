@@ -1,0 +1,164 @@
+import tkinter as tk
+from tkinter import messagebox
+import random
+
+
+MAX_LINES = 3
+MAX_BET = 100
+MIN_BET = 1
+ROWS = 3
+COLS = 3
+symbol_count = {
+    "A": 2,
+    "B": 4,
+    "C": 6,
+    "D": 8
+}
+symbol_value = {
+    "A": 5,
+    "B": 4,
+    "C": 3,
+    "D": 2
+}
+
+class SlotMachineApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Slot Machine Game")
+
+        self.balance = 100  # Initial balance of $100
+
+        # GUI components
+        self.balance_label = tk.Label(root, text=f"Current Balance: ${self.balance}")
+        self.balance_label.pack()
+
+        self.deposit_button = tk.Button(root, text="Deposit", command=self.deposit)
+        self.deposit_button.pack()
+
+        self.lines_label = tk.Label(root, text=f"Enter Number of Lines (1-{MAX_LINES}):")
+        self.lines_label.pack()
+
+        self.lines_entry = tk.Entry(root)
+        self.lines_entry.pack()
+
+        self.bet_label = tk.Label(root, text=f"Enter Bet Amount (${MIN_BET}-${MAX_BET}):")
+        self.bet_label.pack()
+
+        self.bet_entry = tk.Entry(root)
+        self.bet_entry.pack()
+
+        self.spin_button = tk.Button(root, text="Spin", command=self.spin)
+        self.spin_button.pack()
+
+        self.result_label = tk.Label(root, text="")
+        self.result_label.pack()
+
+        self.slot_frame = tk.Frame(root)
+        self.slot_frame.pack()
+
+        self.update_balance()  # Update the balance label with the initial balance
+
+    def deposit(self):
+        amount = self.prompt_for_amount("Enter amount to deposit:")
+        if amount:
+            self.balance += amount
+            self.update_balance()
+
+    def update_balance(self):
+        self.balance_label.config(text=f"Current Balance: ${self.balance}")
+
+    def prompt_for_amount(self, prompt):
+        while True:
+            amount_str = tk.simpledialog.askstring("Amount", prompt)
+            if amount_str is None:
+                return None
+            if amount_str.isdigit():
+                amount = int(amount_str)
+                if amount > 0:
+                    return amount
+                else:
+                    messagebox.showerror("Error", "Enter an amount greater than zero")
+            else:
+                messagebox.showerror("Error", "Please enter a number")
+
+    def get_number_of_lines(self):
+        lines_str = self.lines_entry.get()
+        if lines_str.isdigit():
+            lines = int(lines_str)
+            if 1 <= lines <= MAX_LINES:
+                return lines
+            else:
+                messagebox.showerror("Error", f"Enter a valid number of lines (1-{MAX_LINES})")
+        else:
+            messagebox.showerror("Error", "Please enter a number")
+
+    def get_bet(self):
+        bet_str = self.bet_entry.get()
+        if bet_str.isdigit():
+            bet = int(bet_str)
+            if MIN_BET <= bet <= MAX_BET:
+                return bet
+            else:
+                messagebox.showerror("Error", f"Bet amount must be between ${MIN_BET} and ${MAX_BET}")
+        else:
+            messagebox.showerror("Error", "Please enter a number")
+
+    def spin(self):
+        lines = self.get_number_of_lines()
+        if lines is None:
+            return
+
+        bet = self.get_bet()
+        if bet is None:
+            return
+
+        total_bet = bet * lines
+        if total_bet > self.balance:
+            messagebox.showerror("Error", f"Not enough balance to bet that amount. Your current balance is: ${self.balance}")
+            return
+
+        self.balance -= total_bet
+        self.update_balance()
+
+        slots = self.get_slot_machine_spin(ROWS, COLS, symbol_count)
+        self.display_slots(slots)
+
+        winnings = self.check_winnings(slots, lines, bet, symbol_value)
+        self.balance += winnings
+        self.update_balance()
+
+        self.result_label.config(text=f"You won ${winnings - total_bet}! Total winnings: ${winnings}")
+
+    def get_slot_machine_spin(self, rows, cols, symbols):
+        all_symbols = []
+        for symbol, symbol_count in symbols.items():
+            all_symbols.extend([symbol] * symbol_count)
+
+        columns = []
+        for _ in range(cols):
+            column = random.sample(all_symbols, rows)
+            columns.append(column)
+
+        return columns
+
+    def display_slots(self, slots):
+        for widget in self.slot_frame.winfo_children():
+            widget.destroy()
+
+        for row in range(ROWS):
+            for col in range(COLS):
+                label = tk.Label(self.slot_frame, text=slots[col][row], font=('Helvetica', 24))
+                label.grid(row=row, column=col, padx=5, pady=5)
+
+    def check_winnings(self, columns, lines, bet, values):
+        winnings = 0
+        for line in range(lines):
+            symbol = columns[0][line]
+            if all(column[line] == symbol for column in columns):
+                winnings += values[symbol] * bet
+        return winnings
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SlotMachineApp(root)
+    root.mainloop()
